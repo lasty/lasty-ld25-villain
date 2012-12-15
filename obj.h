@@ -17,10 +17,10 @@ using std::string;
 class ObjPrim : public Prim
 {
 public:
-	ObjPrim(VertexArray &vbuff, string filename);
+	ObjPrim(VertexArray &vbuff, string filename, float zoom=1.0f);
 	virtual ~ObjPrim();
 
-	void ParseFile(string filename);
+	void ParseFile(string filename, float zoom);
 };
 
 #endif /* OBJ_H_ */

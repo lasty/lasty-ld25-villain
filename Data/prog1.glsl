@@ -12,7 +12,7 @@ varying vec2 uv;
 
 void main()
 {
-	gl_Position = model_matrix * projection_view_matrix	* vec4(position, 1.0);
+	gl_Position = projection_view_matrix * model_matrix * vec4(position, 1.0);
 
 	uv = texcoord;
 }
@@ -27,6 +27,5 @@ varying vec2 uv;
 
 void main()
 {
-	gl_FragColor = //vec4(1.0, 1.0, 0.0, 1.0); 
-	texture2D(tex, uv);
+	gl_FragColor = texture2D(tex, uv);
 }

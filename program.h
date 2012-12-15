@@ -15,6 +15,11 @@ using std::string;
 
 #include "camera.h"
 
+using glm::vec2;
+using glm::vec3;
+using glm::mat3;
+using glm::mat4;
+
 class VertexArray;
 class Image;
 
@@ -53,6 +58,8 @@ public:
 	void Use(VertexArray *vbuff);
 
 	void SetUniform(int uniform_id, const mat4 &m4);
+	void SetUniform(int uniform_id, const mat3 &m3);
+	void SetUniform(int uniform_id, const vec3 &v3);
 	void SetUniform(int uniform_id, int i1);
 
 
@@ -60,6 +67,32 @@ public:
 	void SetModel(const mat4 &model_matrix);
 
 	void SetTexture(Image* img);
+};
+
+
+class ProgramLighting : public Program
+{
+protected:
+	int u_normal_matrix = -1;
+	int u_projection_matrix = -1;
+	int u_view_matrix = -1;
+
+	int u_light1_col = -1;
+	int u_light1_pos = -1;
+
+	int u_light2_col = -1;
+	int u_light2_pos = -1;
+
+	int u_light3_col = -1;
+	int u_light3_pos = -1;
+
+public:
+	ProgramLighting(const string filename);
+
+	void SetLight(int which, vec3 pos, vec3 col);
+	void SetCamera(Camera *cam);
+	void SetModel(const mat4 &model_matrix);
+
 };
 
 #endif /* PROGRAM_H_ */

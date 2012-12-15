@@ -52,6 +52,7 @@ extern const std::string TITLE;
 extern int WIDTH;
 extern int HEIGHT;
 
+extern bool running;
 
 
 #endif /* GLOBALS_H_ */

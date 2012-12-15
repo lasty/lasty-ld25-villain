@@ -18,8 +18,6 @@
 Image::Image()
 {
 	glGenTextures(1, &tex_id);
-
-
 }
 
 Image::~Image()
@@ -30,7 +28,6 @@ Image::~Image()
 void Image::Bind()
 {
 	glBindTexture(GL_TEXTURE_2D, tex_id);
-
 }
 
 
@@ -45,14 +42,14 @@ void Image::LoadImage(const string &filename)
 
 	const uint8_t* decoded = WebPDecodeRGBA((const uint8_t*)file_data.c_str(), file_data.size(), &width, &height);
 
-	LOGf("image %s - %d x %d", filename.c_str(), width, height);
+	LOGf("image %d %s - %d x %d", tex_id, filename.c_str(), width, height);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, decoded);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	//glGenerateMipmap(GL_TEXTURE_2D);
+	glGenerateMipmap(GL_TEXTURE_2D);
 
 	CheckError();
 }

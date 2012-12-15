@@ -21,10 +21,10 @@ constexpr bool debug = false;
 using std::stringstream;
 using std::vector;
 
-ObjPrim::ObjPrim(VertexArray &vbuff, string filename)
+ObjPrim::ObjPrim(VertexArray &vbuff, string filename, float zoom)
 :Prim(vbuff)
 {
-	ParseFile(filename);
+	ParseFile(filename, zoom);
 }
 
 
@@ -89,7 +89,7 @@ void ParseFLine(const string& line, int &pos_index, int &uv_index, int &normal_i
 }
 
 
-void ObjPrim::ParseFile(string filename)
+void ObjPrim::ParseFile(string filename, float zoom)
 {
 	stringstream in;
 	string in_src = ReadFile(filename);
@@ -116,7 +116,7 @@ void ObjPrim::ParseFile(string filename)
 	while (StartsWith(line, "v "))
 	{
 		if (debug) LOGf("v -- %s", line.c_str());
-		positions.push_back(ParseLine3(line));
+		positions.push_back(zoom * ParseLine3(line));
 
 		std::getline(in, line);
 	}

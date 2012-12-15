@@ -34,12 +34,15 @@ public:
 	mat4 projection_view_matrix;
 
 	Camera();
+	virtual ~Camera();
+
 
 	void CalcMatrixes();
 
 	void Resize(int w, int h);
 
-	virtual ~Camera();
+
+	void Update(float dt);
 };
 
 #endif /* CAMERA_H_ */

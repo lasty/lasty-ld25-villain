@@ -20,6 +20,12 @@ Camera::Camera()
 	CalcMatrixes();
 }
 
+
+Camera::~Camera()
+{
+
+}
+
 void Camera::CalcMatrixes()
 {
 	projection_matrix = glm::perspective(fov, aspect, znear, zfar);
@@ -38,8 +44,8 @@ void Camera::Resize(int w, int h)
 }
 
 
-Camera::~Camera()
+void Camera::Update(float dt)
 {
 
-}
 
+}

@@ -121,7 +121,6 @@ string Program::GetLinkLog(int prog_id)
 	return log.str();
 }
 
-
 void Program::GetVariables()
 {
 	a_position = glGetAttribLocation(prog_id, "position");
@@ -133,7 +132,6 @@ void Program::GetVariables()
 
 	u_tex = glGetUniformLocation(prog_id, "tex");
 }
-
 
 void Program::Use()
 {
@@ -159,6 +157,18 @@ void Program::SetUniform(int uniform_id, int i1)
 	glUniform1i(uniform_id, i1);
 }
 
+void Program::SetUniform(int uniform_id, const mat3 &m3)
+{
+	ASSERT(uniform_id != -1);
+	glUniformMatrix3fv(uniform_id, 1, GL_FALSE, glm::value_ptr(m3));
+}
+
+void Program::SetUniform(int uniform_id, const vec3 &v3)
+{
+	ASSERT(uniform_id != -1);
+	glUniform3fv(uniform_id, 1, glm::value_ptr(v3));
+}
+
 void Program::SetCamera(Camera *cam)
 {
 	cam->CalcMatrixes();
@@ -170,12 +180,72 @@ void Program::SetModel(const mat4 &model_matrix)
 	SetUniform(u_model_matrix, model_matrix);
 }
 
-
 void Program::SetTexture(Image* img)
 {
+	glActiveTexture(GL_TEXTURE0);
 	img->Bind();
-	SetUniform(u_tex, 0);
+	if (u_tex != -1) SetUniform(u_tex, 0);
 }
 
+ProgramLighting::ProgramLighting(const string filename)
+: Program(filename)
+{
+	u_light1_col = glGetUniformLocation(prog_id, "light1_col");
+	u_light1_pos = glGetUniformLocation(prog_id, "light1_pos");
 
+	u_light2_col = glGetUniformLocation(prog_id, "light2_col");
+	u_light2_pos = glGetUniformLocation(prog_id, "light2_pos");
+
+	u_light3_col = glGetUniformLocation(prog_id, "light3_col");
+	u_light3_pos = glGetUniformLocation(prog_id, "light3_pos");
+
+	u_normal_matrix = glGetUniformLocation(prog_id, "normal_matrix");
+	u_projection_matrix = glGetUniformLocation(prog_id, "projection_matrix");
+	u_view_matrix = glGetUniformLocation(prog_id, "view_matrix");
+
+}
+
+void ProgramLighting::SetLight(int which, vec3 pos, vec3 col)
+{
+	if (which == 0)
+	{
+		if (u_light1_col != -1) SetUniform(u_light1_col, col);
+		if (u_light1_pos != -1) SetUniform(u_light1_pos, pos);
+	}
+	else if (which == 1)
+	{
+		if (u_light2_col != -1) SetUniform(u_light2_col, col);
+		if (u_light2_pos != -1) SetUniform(u_light2_pos, pos);
+	}
+	else if (which == 2)
+	{
+		if (u_light3_col != -1) SetUniform(u_light3_col, col);
+		if (u_light3_pos != -1) SetUniform(u_light3_pos, pos);
+	}
+	else
+	{
+		THROW("light out of range");
+	}
+}
+
+void ProgramLighting::SetCamera(Camera *cam)
+{
+	cam->CalcMatrixes();
+
+	//mat3 normal_matrix(cam->view_matrix);
+
+	if (u_projection_matrix != -1) SetUniform(u_projection_matrix, cam->projection_matrix);
+	SetUniform(u_view_matrix, cam->view_matrix);
+
+	if (u_projection_view_matrix != -1) SetUniform(u_projection_view_matrix, cam->projection_view_matrix);
+}
+
+void ProgramLighting::SetModel(const mat4 &model_matrix)
+{
+	SetUniform(u_model_matrix, model_matrix);
+
+	glm::mat3 normal_matrix( model_matrix );
+
+	SetUniform(u_normal_matrix, normal_matrix);
+}
 
