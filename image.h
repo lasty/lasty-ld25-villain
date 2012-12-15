@@ -29,6 +29,9 @@ public:
 
 
 	void LoadImage(const string &filename);
+
+
+	void SetSmooth();
 };
 
 #endif /* IMAGE_H_ */

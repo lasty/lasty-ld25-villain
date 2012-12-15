@@ -5,7 +5,7 @@ project(lasty_ld25_villain)
 
 set(CMAKE_CXX_FLAGS "-Wall -std=gnu++11 -static-libgcc -static-libstdc++")
 
-set(SOURCES main.cpp os_utils.cpp vertex.cpp program.cpp camera.cpp prim.cpp image.cpp)
+set(SOURCES main.cpp os_utils.cpp vertex.cpp program.cpp camera.cpp prim.cpp image.cpp obj.cpp)
 
 
 ##SDL2

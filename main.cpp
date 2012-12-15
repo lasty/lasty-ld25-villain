@@ -53,7 +53,7 @@ void GLCheckError(const char* file, int line)
 #include "camera.h"
 #include "prim.h"
 #include "image.h"
-
+#include "obj.h"
 
 ///globals
 const string TITLE = ("lasty_ld25_villain");
@@ -72,6 +72,7 @@ Quad *q1 = nullptr;
 
 Image *image1 = nullptr;
 
+ObjPrim *cube1 = nullptr;
 
 void Resize(int w, int h)
 {
@@ -116,6 +117,8 @@ void InitGL()
 {
 	glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
 
+	glEnable(GL_DEPTH_TEST);
+
 	vbuff1 = new VertexArray();
 
 	prog1 = new Program("../Data/prog1.glsl");
@@ -124,6 +127,9 @@ void InitGL()
 
 	image1 = new Image();
 	image1->LoadImage("../Data/cell.webp");
+	image1->SetSmooth();
+
+	cube1 = new ObjPrim(*vbuff1, "../Data/cube.obj");
 }
 
 void DestroyGL()
@@ -133,6 +139,7 @@ void DestroyGL()
 	delete vbuff1;
 
 	delete image1;
+	delete cube1;
 
 	delete cam1;
 }
@@ -140,13 +147,15 @@ void DestroyGL()
 
 void Render()
 {
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	prog1->Use(vbuff1);
 	prog1->SetCamera(cam1);
 	prog1->SetModel(glm::mat4());
 	prog1->SetTexture(image1);
-	q1->Draw();
+
+	//q1->Draw();
+	cube1->Draw();
 
 }
 
