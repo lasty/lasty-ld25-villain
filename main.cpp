@@ -30,19 +30,55 @@ using std::string;
 
 
 #include "GL/glee.h"
+#include "GL/glu.h"
 
 
+void GLCheckError(const char* file, int line)
+{
+	int err = glGetError();
+	if (err == GL_NO_ERROR) return;
 
+	static int errcount = 0;
+
+	const GLubyte* errstr = gluErrorString(err);
+
+	LOGfRaw("GLError #%d: %s  [%s : %d]", errcount, errstr, file, line);
+
+	if (++errcount > 5) THROW("Error count too high");
+}
+
+
+#include "vertex.h"
+#include "program.h"
+#include "camera.h"
+#include "prim.h"
+#include "image.h"
+
+
+///globals
 const string TITLE = ("lasty_ld25_villain");
 int WIDTH = 800;
 int HEIGHT = 600;
 
+
+/// app specific
 bool running = true;
+
+
+VertexArray *vbuff1 = nullptr;
+Program *prog1 = nullptr;
+Camera *cam1 = nullptr;
+Quad *q1 = nullptr;
+
+Image *image1 = nullptr;
 
 
 void Resize(int w, int h)
 {
 	LOGf("Resize: %dx%d", w, h);
+
+	glViewport(0,0, w, h);
+	cam1->Resize(w, h);
 }
 
 void ProcessEvent(SDL_Event &e)
@@ -80,17 +116,37 @@ void InitGL()
 {
 	glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
 
+	vbuff1 = new VertexArray();
+
+	prog1 = new Program("../Data/prog1.glsl");
+	q1 = new Quad(*vbuff1, 1.0f);
+	cam1 = new Camera();
+
+	image1 = new Image();
+	image1->LoadImage("../Data/cell.webp");
 }
 
 void DestroyGL()
 {
+	delete prog1;
+	delete q1;
+	delete vbuff1;
 
+	delete image1;
+
+	delete cam1;
 }
 
 
 void Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
+
+	prog1->Use(vbuff1);
+	prog1->SetCamera(cam1);
+	prog1->SetModel(glm::mat4());
+	prog1->SetTexture(image1);
+	q1->Draw();
 
 }
 

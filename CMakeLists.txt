@@ -5,7 +5,7 @@ project(lasty_ld25_villain)
 
 set(CMAKE_CXX_FLAGS "-Wall -std=gnu++11 -static-libgcc -static-libstdc++")
 
-set(SOURCES main.cpp os_utils.cpp)
+set(SOURCES main.cpp os_utils.cpp vertex.cpp program.cpp camera.cpp prim.cpp image.cpp)
 
 
 ##SDL2
@@ -40,11 +40,17 @@ include_directories(libs/glee/include)
 include_directories(libs/glm-0.9.4.0)
 
 
+## webp library
 
+include_directories(libs/libwebp-0.2.0/src/webp)
+SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${CMAKE_CURRENT_LIST_DIR}/libs/libwebp-0.2.0/src/.libs)
+
+find_library(WEBP_LIBRARY NAMES webp)
+message(${CMAKE_LIBRARY_PATH})
 
 ## main target
 
 add_executable(lasty_ld25_villain ${SOURCES})
 
-target_link_libraries(lasty_ld25_villain SDL2-static libgleeStatic ${OPENGL_LIBRARY})
+target_link_libraries(lasty_ld25_villain SDL2-static libgleeStatic ${OPENGL_LIBRARY} ${WEBP_LIBRARY})
 

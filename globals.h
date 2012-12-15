@@ -39,10 +39,14 @@ public:
 
 #define LOG(msg) {printf(msg " [%s : %d]\n", __FILE__, __LINE__);fflush(stdout);}
 #define LOGf(msg, ...) {printf(msg " [%s : %d]\n", __VA_ARGS__, __FILE__, __LINE__);fflush(stdout);}
+#define LOGfRaw(msg, ...) {printf(msg "\n", __VA_ARGS__);fflush(stdout);}
 
 #define ASSERT(test) if(not (test)) THROW(#test)
 #define ASSERTf(test, msg) if(not (test)) THROW(msg)
 
+extern void GLCheckError(const char* file, int line);
+
+#define CheckError() GLCheckError(__FILE__, __LINE__)
 
 extern const std::string TITLE;
 extern int WIDTH;
