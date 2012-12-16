@@ -418,6 +418,8 @@ public:
 
 	void AI(float dt)
 	{
+		constexpr bool debug = false;
+
 		float delay1 = on_alert ? 0.2f : 0.4f;
 		float delay2 = on_alert ? 0.4f : 1.4f;
 		playerspeed = on_alert ? 4.0f : 1.0f;
@@ -447,13 +449,13 @@ public:
 			}
 
 			dir = (dir+1) % 4;
-			LOGf("AI command:  rotate to direction %d", dir);
+			if (debug) LOGf("AI command:  rotate to direction %d", dir);
 			player_destination_rotation -= 90.0f;
 			thinking_delay = delay2;
 			return;
 		}
 
-		LOGf("AI command:  move in direction %d", dir);
+		if (debug) LOGf("AI command:  move in direction %d", dir);
 		player_origin = player->position;
 		player_destination = newpos;
 		player_intransit = 0.0f;
@@ -926,9 +928,9 @@ void Game::Resize(int w, int h)
 bool control_cam_up = false;
 bool control_cam_down = false;
 
-bool show_lights = false;
+bool show_lights = false;  ///< debug light positions with small cubes
 bool level_loaded = false;
-bool sort_objects = false;
+bool sort_objects = true;  ///< depth sort front to back, to minimize frag shader runs
 
 void Game::Update(float dt)
 {
