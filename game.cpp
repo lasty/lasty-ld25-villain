@@ -138,6 +138,7 @@ vector<int> ParseCoords(string src)
 struct MapDataItem
 {
 	bool clip_player = false;
+	bool occupied = false;
 };
 
 
@@ -147,7 +148,7 @@ vector<vector<MapDataItem>> MapData;
 
 
 
-bool ClipPlayer(glm::vec3 pos)
+bool ClipPlayer(vec3 pos)
 {
 	int x = (pos.x / 2.0f);
 	int y = (pos.z / 2.0f);
@@ -159,9 +160,42 @@ bool ClipPlayer(glm::vec3 pos)
 
 	MapDataItem d = MapData[y][x];
 
-	return d.clip_player;
+	return d.clip_player or d.occupied;
 }
 
+void Occupy(vec3 pos)
+{
+	int x = (pos.x / 2.0f);
+	int y = (pos.z / 2.0f);
+
+	//LOGf("ClipPlayer %.2f, %.2f -> %d, %d", pos.x, pos.z, x, y);
+
+	if (x < 0 or x >= mapsizex) return;
+	if (y < 0 or y >= mapsizey) return;
+
+	MapDataItem &d = MapData[y][x];
+
+	if (d.occupied) LOGf("Occupy Warning trying to occupy a spot already occupied (%d, %d)", x, y);
+
+	d.occupied = true;
+}
+
+void Unoccupy(vec3 pos)
+{
+	int x = (pos.x / 2.0f);
+	int y = (pos.z / 2.0f);
+
+	//LOGf("ClipPlayer %.2f, %.2f -> %d, %d", pos.x, pos.z, x, y);
+
+	if (x < 0 or x >= mapsizex) return;
+	if (y < 0 or y >= mapsizey) return;
+
+	MapDataItem &d = MapData[y][x];
+
+	if (not d.occupied) LOGf("Unoccupy Warning trying to free a spot already freed (%d, %d)", x, y);
+
+	d.occupied = false;
+}
 
 class Player
 {
@@ -195,6 +229,7 @@ public:
 
 		player_destination = player->position;
 		player_destination_rotation = 0.0f;
+		Occupy(player_destination);
 	}
 
 	~Player()
@@ -231,6 +266,9 @@ public:
 				player_origin = player->position;
 				player_destination = player->position + player_vel * 2.0f;
 				player_intransit = 0.0f;
+
+				Unoccupy(player_origin);
+				Occupy(player_destination);
 			}
 
 		}
@@ -273,6 +311,7 @@ public:
 
 		player_destination = player->position;
 		player_destination_rotation = 0.0f;
+		Occupy(player_destination);
 
 		playerspeed = 1.0f;
 
@@ -323,6 +362,10 @@ public:
 		player_intransit = 0.0f;
 		thinking_delay = 0.4f;
 		waiting_cmd = true;
+
+		Unoccupy(player_origin);
+		Occupy(player_destination);
+
 	}
 
 	void Update(float dt)
@@ -355,6 +398,11 @@ void ClearLevel()
 		delete i;
 	}
 	lights.clear();
+
+	for (auto e : Enemies)
+	{
+		delete e;
+	}
 
 	MapData.clear();
 	mapsizex = 0;
@@ -597,11 +645,6 @@ void Game::DestroyGL()
 	ClearLevel();
 
 	delete the_player;
-
-	for (auto e: Enemies)
-	{
-		delete e;
-	}
 
 	delete prog1;
 	delete prog2;
