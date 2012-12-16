@@ -50,3 +50,9 @@ string ReadFile(const string &filename)
 	return ins.str();
 }
 
+
+bool StartsWith(const string& s, const string& token)
+{
+	return s.substr(0, token.size()) == token;
+}
+

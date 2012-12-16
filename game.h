@@ -36,12 +36,15 @@ public:
 
 	Quad *q1 = nullptr;
 
-	Image *image1 = nullptr;
-	Image *image2 = nullptr;
+	Image *image_cell = nullptr;
+	Image *image_marble = nullptr;
+	Image *image_brick = nullptr;
 
 	ObjPrim *cube1 = nullptr;
 
 	ObjPrim *floor1 = nullptr;
+
+	ObjPrim *wall1 = nullptr;
 
 	ObjPrim *light1 = nullptr;
 
@@ -56,6 +59,7 @@ public:
 	void Resize(int w, int h);
 
 	void Render();
+	void RenderWorld();
 
 	void Key(SDL_Keycode key, bool down);
 

@@ -26,4 +26,7 @@ void PopupErrorBox(string msg);
 
 string ReadFile(const string &filename);
 
+bool StartsWith(const string& s, const string& token);
+
+
 #endif /* OS_UTILS_H_ */

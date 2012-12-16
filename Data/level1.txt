@@ -1,0 +1,20 @@
+level level1
+
+legend . floor1
+legend + wall1
+
+beginmap
+++++++++
++......+
++..++..+
++..+...+
++......+
+++++++++
+endmap
+
+light 1,1 cyan
+light 6,1 torch
+light 1,4 yellow
+light 6,4 red
+
+playerstart 4,3

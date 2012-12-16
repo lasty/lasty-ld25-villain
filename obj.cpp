@@ -13,6 +13,8 @@ constexpr bool debug = false;
 
 #include "globals.h"
 #include "os_utils.h"
+#include "image.h"
+
 
 #include "glm/glm.hpp"
 
@@ -21,9 +23,11 @@ constexpr bool debug = false;
 using std::stringstream;
 using std::vector;
 
-ObjPrim::ObjPrim(VertexArray &vbuff, string filename, float zoom)
+ObjPrim::ObjPrim(VertexArray &vbuff, string filename, Image *img_ref, float zoom)
 :Prim(vbuff)
 {
+	this->img_ref = img_ref;
+
 	ParseFile(filename, zoom);
 }
 
@@ -31,11 +35,6 @@ ObjPrim::ObjPrim(VertexArray &vbuff, string filename, float zoom)
 ObjPrim::~ObjPrim()
 {
 
-}
-
-bool StartsWith(const string& s, const string& token)
-{
-	return s.substr(0, token.size()) == token;
 }
 
 
@@ -185,6 +184,9 @@ void ObjPrim::ParseFile(string filename, float zoom)
 	}
 
 	End();
-
 }
+
+
+
+
 

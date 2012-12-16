@@ -14,13 +14,16 @@
 #include <string>
 using std::string;
 
+class Image;
+
 class ObjPrim : public Prim
 {
 public:
-	ObjPrim(VertexArray &vbuff, string filename, float zoom=1.0f);
+	ObjPrim(VertexArray &vbuff, string filename, Image *img_ref, float zoom=1.0f);
 	virtual ~ObjPrim();
 
 	void ParseFile(string filename, float zoom);
+
 };
 
 #endif /* OBJ_H_ */

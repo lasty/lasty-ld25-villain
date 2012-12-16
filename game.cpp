@@ -9,13 +9,19 @@
 
 #include "game.h"
 
+#include "os_utils.h"
+
 #include <vector>
 #include <algorithm>
+#include <sstream>
+#include <map>
 using std::vector;
-
+using std::stringstream;
+using std::map;
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+
 
 using glm::vec3;
 using glm::mat4;
@@ -53,11 +59,15 @@ public:
 
 	void Render(Camera *cam, Program *prog)
 	{
+		if (model->img_ref) prog->SetTexture(model->img_ref);
 		prog->SetModel(model_matrix);
 		model->Draw();
 	}
 };
 
+
+map<string, Prim*> PrimMap;
+map<string, vec3> LightColours;
 
 class Light
 {
@@ -83,8 +93,231 @@ vector<Object *> objs;
 
 vector<Light *> lights;
 
-Object* player;
+Object* player = nullptr;
 glm::vec3 player_vel;
+
+
+vector<string> ParseTokens(string src)
+{
+	stringstream ss;
+	ss << src;
+
+	vector<string> toks;
+
+	while (not ss.eof())
+	{
+		string tok;
+		ss >> tok;
+
+		if (tok != "") // and tok != "\n" and tok != "\r\n" and tok != "\n\r")
+		{
+			toks.push_back(tok);
+		}
+	}
+
+	return toks;
+}
+
+vector<int> ParseCoords(string src)
+{
+	vector<int> toks;
+
+	unsigned pos = 0;
+	unsigned pos_next = 0;
+
+	pos_next = src.find(",", pos);
+
+	string xs = src.substr(0, pos_next);
+	LOGf("xs = '%s'", xs.c_str());
+	string ys = src.substr(pos_next + 1);
+	LOGf("ys = '%s'", ys.c_str());
+
+	toks.push_back(atoi(xs.c_str()));
+	toks.push_back(atoi(ys.c_str()));
+
+	return toks;
+}
+
+struct MapDataItem
+{
+	bool clip_player = false;
+};
+
+
+int mapsizex = 0;
+int mapsizey = 0;
+vector<vector<MapDataItem>> MapData;
+
+
+
+bool ClipPlayer(glm::vec3 pos)
+{
+	int x = (pos.x / 2.0f);
+	int y = (pos.z / 2.0f);
+
+	//LOGf("ClipPlayer %.2f, %.2f -> %d, %d", pos.x, pos.z, x, y);
+
+	if (x < 0 or x >= mapsizex) return true;
+	if (y < 0 or y >= mapsizey) return true;
+
+	MapDataItem d = MapData[y][x];
+
+	return d.clip_player;
+}
+
+
+void ClearLevel()
+{
+	for(auto i : objs)
+	{
+		delete i;
+	}
+	objs.clear();
+
+	for (auto i : lights)
+	{
+		delete i;
+	}
+	lights.clear();
+
+	MapData.clear();
+	mapsizex = 0;
+	mapsizey = 0;
+}
+
+
+
+void ParseLevel(string filename)
+{
+	ClearLevel();
+
+	LOG("=== parsing level ===");
+	stringstream ss;
+	string src = ReadFile(filename);
+	ss << src;
+
+	string line;
+
+	/// level name
+	getline(ss, line);
+	while (not StartsWith(line, "level "))
+	{
+		getline(ss, line);
+	}
+
+	map<char, string> legend;
+
+	auto level_line = ParseTokens(line);
+
+	LOGf("Level Name : %s", level_line.at(1).c_str());
+
+	/// map legend
+	getline(ss, line);
+	while (not StartsWith(line, "legend ")) { getline(ss, line); }
+
+	while (StartsWith(line, "legend "))
+	{
+		auto legend_line = ParseTokens(line);
+
+		string sym = legend_line.at(1);
+		string type = legend_line.at(2);
+
+		legend[sym[0]] = type;
+
+		LOGf("Legend : sym %s  ->  %s ", sym.c_str(), type.c_str());
+
+		getline(ss, line);
+	}
+
+	/// map bitmap
+	while (not StartsWith(line, "beginmap")) { getline(ss, line); }
+
+	int row = 0;
+	getline(ss, line);
+	while (not StartsWith(line, "endmap"))
+	{
+		auto map_row_tok = ParseTokens(line);
+		string map_row = map_row_tok.at(0);
+
+		LOGf("Map line %d:  %s", row, map_row.c_str());
+
+		vector<MapDataItem> mapdatarow;
+
+		for (int x=0; x<int(map_row.size()); ++x)
+		{
+			string s = legend[map_row[x]];
+			Object *obj = nullptr;
+
+			Prim *pr = PrimMap[s];
+
+			if (pr)
+			{
+				obj = new Object(vec3(x*2.0f,0,row*2.0f), vec3(0,0,0), pr);
+				objs.push_back(obj);
+			}
+			else
+			{
+				LOGf("Unknown legend type '%s'", s.c_str());
+				//THROW(string("Unknown legend type ") + s);
+			}
+
+			MapDataItem d;
+			d.clip_player = s=="wall1";
+
+			mapdatarow.push_back(d);
+		}
+
+		MapData.push_back(mapdatarow);
+		mapsizey = MapData.size();
+		mapsizex = mapdatarow.size();
+
+		row++;
+		getline(ss, line);
+	}
+
+	getline(ss, line);
+
+	/// entity list
+	for (;not ss.eof(); getline(ss, line))
+	{
+		auto entity_line = ParseTokens(line);
+
+		LOGf("line '%s'", line.c_str());
+		LOGf("num tokens %d", entity_line.size());
+		if (entity_line.size() == 0) continue;
+
+		string etype = entity_line.at(0);
+		string epos_src = entity_line.at(1);
+		auto epos = ParseCoords(epos_src);
+
+		float x = epos.at(0) * 2;
+		float y = epos.at(1) * 2;
+
+
+		if (etype == "light")
+		{
+			string light_colour = entity_line.at(2);
+			vec3 colour = LightColours[light_colour];
+
+			lights.push_back( new Light(vec3(x, 1.0f, y), colour));
+		}
+
+		else if (etype == "playerstart" and player == nullptr)
+		{
+			Prim *pr = PrimMap["player"];
+
+			player = new Object(vec3(x,1.0f,y), vec3(0,0,0), pr);
+		}
+
+		LOGf("Entity '%s' at '%s'", etype.c_str(), epos_src.c_str());
+	}
+
+
+
+	LOG("=== end parse ---");
+
+}
+
 
 Game::Game()
 {
@@ -115,59 +348,74 @@ void Game::InitGL()
 
 	cam1 = new Camera();
 
-	image1 = new Image();
-	image1->LoadImage("../Data/cell.webp");
-	image1->SetSmooth();
+	image_cell = new Image();
+	image_cell->LoadImage("../Data/cell.webp");
+	image_cell->SetSmooth();
 
-	image2 = new Image();
-	image2->LoadImage("../Data/marble.webp");
-	image2->SetSmooth();
+	image_marble = new Image();
+	image_marble->LoadImage("../Data/marble.webp");
+	image_marble->SetSmooth();
 
-	cube1 = new ObjPrim(*vbuff1, "../Data/cube.obj", 0.5f);
+	image_brick = new Image();
+	image_brick->LoadImage("../Data/bricks.webp");
+	image_brick->SetSmooth();
 
-	light1 = new ObjPrim(*vbuff1, "../Data/cube.obj", 0.2f);
 
-	floor1 = new ObjPrim(*vbuff1, "../Data/floor.obj");
+	cube1 = new ObjPrim(*vbuff1, "../Data/cube.obj", image_cell, 0.5f);
+	PrimMap["cube1"] = cube1;
+	PrimMap["player"] = cube1;
+
+	light1 = new ObjPrim(*vbuff1, "../Data/cube.obj", image_cell, 0.1f);
+	PrimMap["light1"] = light1;
+
+	floor1 = new ObjPrim(*vbuff1, "../Data/floor.obj", image_marble);
+	PrimMap["floor1"] = floor1;
+
+	wall1 = new ObjPrim(*vbuff1, "../Data/wall.obj", image_brick);
+	PrimMap["wall1"] = wall1;
 
 	cam1->position += vec3(0, 2, 0);
 	cam1->CalcMatrixes();
 
-	for (int x=-5; x<15; ++x)
-	{
-		for( int y=-4; y<14; ++y)
-		{
-			objs.push_back( new Object(vec3(x*2.0f,0,y*2.0f), vec3(0,0,0), floor1));
-		}
-	}
+//	for (int x=-5; x<15; ++x)
+//	{
+//		for( int y=-4; y<14; ++y)
+//		{
+//			objs.push_back( new Object(vec3(x*2.0f,0,y*2.0f), vec3(0,0,0),
+//			                           (x==-5 or x==14 or y==-4 or y==13) ? wall1 : floor1));
+//		}
+//	}
 
-	lights.push_back( new Light(vec3(0.0, 1.0f, 0.0f), colour_light_yellow * 5.0f));
+	LightColours["torch"] = vec3(1.0f, 0.8f, 0.2f);
 
-	lights.push_back( new Light(vec3(5.0, 1.0f, 8.0f), colour_light_red * 5.0f));
+	LightColours["yellow"] = colour_light_yellow * 5.0f;
 
-	lights.push_back( new Light(vec3(8.0, 1.0f, 1.0f), colour_light_cyan * 5.0f));
+	LightColours["red"] = colour_light_red * 5.0f;
+
+	LightColours["cyan"] = colour_light_cyan * 5.0f;
 
 
-	player = new Object(vec3(0,0,0), vec3(0,0,0), cube1);
+	//player = new Object(vec3(0,0,0), vec3(0,0,0), cube1);
 }
 
 void Game::DestroyGL()
 {
-	for(auto i : objs)
-	{
-		delete i;
-	}
-	objs.clear();
+	ClearLevel();
+
+	delete player;
 
 	delete prog1;
 	delete prog2;
 	delete q1;
 	delete vbuff1;
 
-	delete image1;
-	delete image2;
+	delete image_cell;
+	delete image_marble;
+	delete image_brick;
 
 	delete cube1;
 	delete floor1;
+	delete wall1;
 
 	delete cam1;
 }
@@ -180,6 +428,10 @@ void Game::Resize(int w, int h)
 	cam1->Resize(w, h);
 }
 
+float player_intransit = 1.0f;
+vec3 player_destination;
+vec3 player_origin;
+
 bool control_fwd = false;
 bool control_back = false;
 bool control_left = false;
@@ -188,8 +440,21 @@ bool control_right = false;
 bool control_cam_up = false;
 bool control_cam_down = false;
 
+bool show_lights = true;
+bool level_loaded = false;
+bool sort_objects = false;
+
 void Game::Update(float dt)
 {
+	if (not level_loaded)
+	{
+		ParseLevel("../Data/level1.txt");
+		level_loaded=true;
+		player_destination = player->position;
+	}
+
+	ASSERT(player);
+
 	float playerspeed = 4.0f;
 	float camspeed = 8.0f;
 
@@ -201,9 +466,32 @@ void Game::Update(float dt)
 	if (control_left) player_vel.x -= 1.0f;
 	if (control_right) player_vel.x += 1.0f;
 
-	player->position = player->position + ( player_vel * playerspeed * dt);
+	if (player_intransit >= 1.0f and player_vel != vec3())
+	{
+		if (not ClipPlayer(player->position + player_vel * 2.0f))
+		{
+			player_origin = player->position;
+			player_destination = player->position + player_vel * 2.0f;
+			player_intransit = 0.0f;
+		}
+	}
+
+	if (player_intransit < 1.0f)
+	{
+		player_intransit += dt * playerspeed;
+		player->position = glm::mix(player_origin, player_destination, player_intransit);
+	}
+
+	if (player_intransit > 1.0f)
+	{
+		player_intransit = 1.0f;
+		player->position = player_destination;
+	}
+
+	player->position = glm::mix(player->position, player_destination, player_intransit);
 	player->UpdateMatrixes();
 
+	//LOGf("player_intransit = %.2f", player_intransit);
 	cam1->look_at = player->position;
 
 	vec3 cam_vel = glm::vec3();
@@ -256,6 +544,24 @@ void Game::Key(SDL_Keycode key, bool keydown)
 	{
 		running = false;
 	}
+
+	if (keydown and key == SDLK_F5)
+	{
+		level_loaded = false;  //reloads the level
+	}
+
+	if (keydown and key == SDLK_l)
+	{
+		show_lights = not show_lights;
+		LOGf("%s lights", show_lights?"showing":"hiding");
+	}
+
+	if (keydown and key == SDLK_o)
+	{
+		sort_objects = not sort_objects;
+		LOGf("%ssorting objects", sort_objects?"":"not ");
+	}
+
 }
 
 struct light_sort
@@ -301,6 +607,65 @@ void SetLights(ProgramLighting *prog, vec3 pos)
 }
 
 
+struct obj_sort
+{
+	Object* obj;
+	float distance;
+
+	bool operator<(const obj_sort &rhs) const
+	{
+		return distance < rhs.distance;
+	}
+};
+
+
+void Game::RenderWorld()
+{
+
+	if (sort_objects) /// sort from front to back (pixel shader appears to be chewing up GPU time)
+	{
+		vector<obj_sort> obj_bin;
+		for (auto i : objs)
+		{
+			float distance = glm::distance(i->position, cam1->position);
+
+			obj_bin.push_back({i, distance});
+		}
+
+		std::sort(obj_bin.begin(), obj_bin.end());
+
+		for (auto &i : obj_bin)
+		{
+			SetLights(prog2, i.obj->position);
+
+			i.obj->Render(cam1, prog2);
+		}
+	}
+	else
+	{
+		for (auto &i : objs)
+		{
+			SetLights(prog2, i->position);
+
+			i->Render(cam1, prog2);
+		}
+	}
+
+
+	if (show_lights)
+	{
+		for(auto l : lights)
+		{
+			prog1->Use();
+			prog1->SetCamera(cam1);
+
+			mat4 light_pos = glm::translate(mat4(), l->position);
+			prog1->SetModel(light_pos);
+			light1->Draw();
+		}
+	}
+}
+
 void Game::Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -310,37 +675,24 @@ void Game::Render()
 	prog1->SetModel(glm::mat4());
 
 
-	prog1->SetTexture(image2);
+	prog1->SetTexture(image_marble);
 
 
 	prog2->Use(vbuff1);
 	prog2->SetCamera(cam1);
-	prog2->SetTexture(image2);
+	prog2->SetTexture(image_marble);
 
-	for (auto i : objs)
-	{
-		SetLights(prog2, i->position);
+	RenderWorld();
 
-		i->Render(cam1, prog2);
-	}
 
 	prog2->Use(vbuff1);
 	prog2->SetCamera(cam1);
 
 	SetLights(prog2, player->position);
 
-	prog2->SetTexture(image1);
+	prog2->SetTexture(image_cell);
 	player->Render(cam1, prog2);
 
 
-	for(auto l : lights)
-	{
-		prog1->Use();
-		prog1->SetCamera(cam1);
-
-		mat4 light_pos = glm::translate(mat4(), l->position);
-		prog1->SetModel(light_pos);
-		light1->Draw();
-	}
 }
 

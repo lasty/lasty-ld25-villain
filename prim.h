@@ -12,6 +12,7 @@
 
 #include "vertex.h"
 
+class Image;
 
 class Prim
 {
@@ -27,6 +28,7 @@ public:
 	Prim(VertexArray &vtxbuff_ref);
 	virtual ~Prim();
 
+	Image *img_ref = nullptr;
 
 	void Begin(int prim_type);
 
