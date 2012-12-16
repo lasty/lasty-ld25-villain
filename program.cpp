@@ -171,7 +171,7 @@ void Program::SetUniform(int uniform_id, const vec3 &v3)
 
 void Program::SetCamera(Camera *cam)
 {
-	cam->CalcMatrixes();
+	//cam->CalcMatrixes();
 	SetUniform(u_projection_view_matrix, cam->projection_view_matrix);
 }
 

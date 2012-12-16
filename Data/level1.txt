@@ -6,10 +6,10 @@ legend + wall1
 beginmap
 ++++++++
 +......+
-+..++..+
-+..+...+
 +......+
-++++++++
++......+
++......+
+++++..++
 endmap
 
 light 1,1 cyan
@@ -19,6 +19,10 @@ light 6,4 red
 
 enemy 1,1 N
 enemy 6,4 S
+
+cash 4,3
+goldbars 2,1
+goldbars 6,4
 
 
 playerstart 4,3

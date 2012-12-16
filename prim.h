@@ -46,6 +46,9 @@ class Quad : public Prim
 {
 public:
 	Quad(VertexArray &vtxarr, float size);
+
+	Quad(VertexArray &vtxarr, int divs, int x0, int y0, int x1, int y1);
+
 };
 
 

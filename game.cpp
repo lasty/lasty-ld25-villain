@@ -46,6 +46,8 @@ public:
 		UpdateMatrixes();
 	}
 
+	virtual ~Object() { }
+
 	void UpdateMatrixes()
 	{
 		mat4 rotx = glm::rotate( mat4(), rotation.x, vec3(1.0f, 0.0f, 0.0f));
@@ -57,14 +59,36 @@ public:
 		model_matrix = trans * rotx * roty * rotz;
 	}
 
-	void Render(Camera *cam, Program *prog)
+	virtual void Render(Camera *cam, Program *prog)
 	{
 		if (model->img_ref) prog->SetTexture(model->img_ref);
 		prog->SetModel(model_matrix);
 		model->Draw();
 	}
+
+	virtual void Update(float dt) { }
 };
 
+class Loot : public Object
+{
+public:
+	Loot(vec3 position, vec3 rotation, Prim *model)
+	: Object(position, rotation, model)
+	{
+		UpdateMatrixes();
+	}
+
+	void Update(float dt)
+	{
+		float rotatespeed = 90.0f;
+
+		rotation.y += rotatespeed * dt;
+		if (rotation.y > 360.0f) rotation.y -= 360.0f;
+
+		UpdateMatrixes();
+	}
+
+};
 
 map<string, Prim*> PrimMap;
 map<string, vec3> LightColours;
@@ -89,7 +113,9 @@ vec3 colour_light_yellow(0.9f, 0.9f, 0.2f);
 vec3 colour_light_cyan(0.2f, 0.8f, 0.9f);
 
 
-vector<Object *> objs;
+vector<Object *> objs;  ///< static, dont get updated
+
+vector<Object *> entities;  ///< dynamic, update(dt) gets called
 
 vector<Light *> lights;
 
@@ -384,9 +410,19 @@ public:
 Player *the_player = nullptr;
 vector<Enemy*> Enemies;
 
+int current_score = 0;
+int max_score = 0;
+
+bool level_won = true;
+bool level_lost = true;
+
 
 void ClearLevel()
 {
+	current_score = 0;
+	level_won = false;
+	level_lost = false;
+
 	for(auto i : objs)
 	{
 		delete i;
@@ -400,6 +436,11 @@ void ClearLevel()
 	lights.clear();
 
 	for (auto e : Enemies)
+	{
+		delete e;
+	}
+
+	for (auto e : entities)
 	{
 		delete e;
 	}
@@ -538,6 +579,17 @@ void ParseLevel(string filename)
 			Enemies.push_back( new Enemy(x,y, dir) );
 		}
 
+		else if (etype == "goldbars" or etype == "cash")
+		{
+			max_score++;
+
+			Prim *pr = PrimMap[etype];
+
+			Object *obj = new Loot(vec3(x,0,row), vec3(0,0,0), pr);
+
+			entities.push_back(obj);
+		}
+
 		LOGf("Entity '%s' at '%s'", etype.c_str(), epos_src.c_str());
 	}
 
@@ -576,7 +628,28 @@ void Game::InitGL()
 
 	q1 = new Quad(*vbuff1, 1.0f);
 
+	//y0 and y1 values are screwed here, no time to investigate properly
+
+	ui_loot = new Quad(*vbuff1, 8, 0, 7, 4, 8);
+	ui_win = new Quad(*vbuff1, 8, 0, 13, 6, 14);
+	ui_caught = new Quad(*vbuff1, 8, 0, 3, 6, 4);
+	ui_1 = new Quad(*vbuff1, 8, 4, 7, 5, 8);
+	ui_2 = new Quad(*vbuff1, 8, 5, 7, 6, 8);
+	ui_3 = new Quad(*vbuff1, 8, 6, 7, 7, 8);
+	ui_4 = new Quad(*vbuff1, 8, 7, 7, 8, 8);
+
+	ui_5 = new Quad(*vbuff1, 8, 0, 9, 1, 10);
+	ui_6 = new Quad(*vbuff1, 8, 1, 9, 2, 10);
+	ui_7 = new Quad(*vbuff1, 8, 2, 9, 3, 10);
+	ui_8 = new Quad(*vbuff1, 8, 3, 9, 4, 10);
+	ui_9 = new Quad(*vbuff1, 8, 4, 9, 5, 10);
+	ui_0 = new Quad(*vbuff1, 8, 5, 9, 6, 10);
+	ui_slash =
+	       new Quad(*vbuff1, 8, 6, 9, 7, 10);
+
 	cam1 = new Camera();
+
+	ortho1 = new Camera();
 
 	image_cell = new Image();
 	image_cell->LoadImage("../Data/cell.webp");
@@ -589,6 +662,18 @@ void Game::InitGL()
 	image_brick = new Image();
 	image_brick->LoadImage("../Data/bricks.webp");
 	image_brick->SetSmooth();
+
+	image_gold = new Image();
+	image_gold->LoadImage("../Data/gold.webp");
+	image_gold->SetSmooth();
+
+	image_cash = new Image();
+	image_cash->LoadImage("../Data/cash.webp");
+	image_cash->SetSmooth();
+
+	image_texts = new Image();
+	image_texts->LoadImage("../Data/texts.webp");
+	image_texts->SetSmooth();
 
 
 	cube1 = new ObjPrim(*vbuff1, "../Data/cube.obj", image_cell, 0.5f);
@@ -609,6 +694,13 @@ void Game::InitGL()
 
 	wall1 = new ObjPrim(*vbuff1, "../Data/wall.obj", image_brick);
 	PrimMap["wall1"] = wall1;
+
+
+	loot1 = new ObjPrim(*vbuff1, "../Data/goldbars.obj", image_gold);
+	PrimMap["goldbars"] = loot1;
+
+	loot2 = new ObjPrim(*vbuff1, "../Data/cash.obj", image_cash, 0.75f);
+	PrimMap["cash"] = loot2;
 
 	cam1->position += cam_offset;
 	cam1->position_set += cam_offset;
@@ -651,9 +743,28 @@ void Game::DestroyGL()
 	delete q1;
 	delete vbuff1;
 
+	delete ui_loot;
+	delete ui_win;
+	delete ui_caught;
+	delete ui_1;
+	delete ui_2;
+	delete ui_3;
+	delete ui_4;
+	delete ui_5;
+	delete ui_6;
+	delete ui_7;
+	delete ui_8;
+	delete ui_9;
+	delete ui_0;
+	delete ui_slash;
+
+
 	delete image_cell;
 	delete image_marble;
 	delete image_brick;
+	delete image_gold;
+	delete image_cash;
+	delete image_texts;
 
 	delete cube1;
 	delete player1;
@@ -661,7 +772,11 @@ void Game::DestroyGL()
 	delete floor1;
 	delete wall1;
 
+	delete loot1;
+	delete loot2;
+
 	delete cam1;
+	delete ortho1;
 }
 
 void Game::Resize(int w, int h)
@@ -670,6 +785,12 @@ void Game::Resize(int w, int h)
 
 	glViewport(0,0, w, h);
 	cam1->Resize(w, h);
+
+	ortho1->projection_matrix = glm::ortho(0.0f, float(w), 0.0f, float(h));
+	ortho1->view_matrix = mat4();
+
+	ortho1->projection_view_matrix = ortho1->projection_matrix * ortho1->view_matrix;
+
 }
 
 bool control_cam_up = false;
@@ -698,6 +819,10 @@ void Game::Update(float dt)
 		e->Update(dt);
 	}
 
+	for (auto e : entities)
+	{
+		e->Update(dt);
+	}
 
 	float camspeed = 8.0f;
 
@@ -718,6 +843,9 @@ void Game::Update(float dt)
 
 
 	cam1->Update(dt);
+
+
+	if (current_score >= max_score) level_won = true;
 
 }
 
@@ -909,6 +1037,13 @@ void Game::Render()
 	prog2->SetTexture(image_cell);
 	the_player->player->Render(cam1, prog2);
 
+	for (auto e: entities)
+	{
+		SetLights(prog2, e->position);
+
+		e->Render(cam1, prog2);
+	}
+
 
 	//prog2->SetTexture(image_cell);
 	for (auto e: Enemies)
@@ -918,5 +1053,90 @@ void Game::Render()
 		e->player->Render(cam1, prog2);
 	}
 
+
+	RenderGUI();
 }
 
+void Game::RenderText(float offx, float offy, const string &txt)
+{
+	mat4 translate_matrix = glm::translate(mat4(), vec3(offx, offy, 0.0f));
+
+	for (unsigned i = 0; i < txt.size(); ++i)
+	{
+		char ch = txt[i];
+		prog1->SetModel(translate_matrix);
+
+		if (ch == '1') ui_1->Draw();
+		if (ch == '2') ui_2->Draw();
+		if (ch == '3') ui_3->Draw();
+		if (ch == '4') ui_4->Draw();
+		if (ch == '5') ui_5->Draw();
+		if (ch == '6') ui_6->Draw();
+		if (ch == '7') ui_7->Draw();
+		if (ch == '8') ui_8->Draw();
+		if (ch == '9') ui_9->Draw();
+		if (ch == '0') ui_0->Draw();
+		if (ch == '/') ui_slash->Draw();
+
+		translate_matrix = glm::translate(translate_matrix, vec3(32.0, 0.0f, 0.0f));
+	}
+}
+
+void Game::RenderGUI()
+{
+	prog1->Use(vbuff1);
+
+
+	prog1->SetCamera(ortho1);
+
+	//mat4 scale_matrix = glm::scale(mat4(), vec3(10.0f));
+
+	mat4 translate_matrix = glm::translate(mat4(), vec3(80.0f, 60.0f, 0.0f));
+
+	mat4 model_matrix = translate_matrix ;
+
+	prog1->SetModel(model_matrix);
+
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+
+	prog1->SetTexture(image_texts);
+
+
+	ui_loot->Draw();
+
+	stringstream score_txt;
+	score_txt << current_score << "/" << max_score;
+
+	RenderText(180.0f, 60.0f, score_txt.str());
+
+
+	if (level_won)
+	{
+		mat4 translate_matrix = glm::translate(mat4(), vec3(WIDTH/2.0f, HEIGHT/2.0f, 0.0f));
+		mat4 scale_matrix = glm::scale(translate_matrix, vec3(4.0f));
+		prog1->SetModel(scale_matrix);
+
+		ui_win->Draw();
+	}
+
+	if (level_lost)
+	{
+		mat4 translate_matrix = glm::translate(mat4(), vec3(WIDTH/2.0f, HEIGHT/2.0f, 0.0f));
+		mat4 scale_matrix = glm::scale(translate_matrix, vec3(4.0f));
+		mat4 model_matrix = glm::rotate(scale_matrix, 30.0f, vec3(0.0f, 0.0f, 1.0f));
+
+		prog1->SetModel(model_matrix);
+
+		ui_caught->Draw();
+
+	}
+
+	glEnable(GL_DEPTH_TEST);
+	glDisable(GL_BLEND);
+
+
+}
