@@ -1013,7 +1013,7 @@ void Game::Update(float dt)
 
 void Game::Key(SDL_Keycode key, bool keydown)
 {
-	show_title = false;
+	if (keydown) show_title = false;
 
 	if (key == SDLK_w or key == SDLK_UP)
 	{
@@ -1048,6 +1048,11 @@ void Game::Key(SDL_Keycode key, bool keydown)
 	if (key == SDLK_ESCAPE)
 	{
 		running = false;
+	}
+
+	if (keydown and key == SDLK_F1)
+	{
+		show_title = true;
 	}
 
 	if (keydown and ((key == SDLK_F5) or ((level_won or level_lost) and (key == SDLK_SPACE))))
