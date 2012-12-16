@@ -25,4 +25,4 @@ goldbars 2,1
 goldbars 6,4
 
 
-playerstart 4,3
+playerstart 5,3

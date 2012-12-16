@@ -151,9 +151,9 @@ vector<int> ParseCoords(string src)
 	pos_next = src.find(",", pos);
 
 	string xs = src.substr(0, pos_next);
-	LOGf("xs = '%s'", xs.c_str());
+	//LOGf("xs = '%s'", xs.c_str());
 	string ys = src.substr(pos_next + 1);
-	LOGf("ys = '%s'", ys.c_str());
+	//LOGf("ys = '%s'", ys.c_str());
 
 	toks.push_back(atoi(xs.c_str()));
 	toks.push_back(atoi(ys.c_str()));
@@ -165,6 +165,8 @@ struct MapDataItem
 {
 	bool clip_player = false;
 	bool occupied = false;
+
+	Loot * has_loot = nullptr;
 };
 
 
@@ -172,6 +174,12 @@ int mapsizex = 0;
 int mapsizey = 0;
 vector<vector<MapDataItem>> MapData;
 
+
+int current_score = 0;
+int max_score = 0;
+
+bool level_won = true;
+bool level_lost = true;
 
 
 bool ClipPlayer(vec3 pos)
@@ -222,6 +230,27 @@ void Unoccupy(vec3 pos)
 
 	d.occupied = false;
 }
+
+
+MapDataItem & GetData(int x, int y)
+{
+	if (x < 0 or x >= mapsizex) THROW("map data get x out of range");
+	if (y < 0 or y >= mapsizey) THROW("map data get y out of range");
+
+	MapDataItem &d = MapData[y][x];
+
+	return d;
+}
+
+
+MapDataItem & GetData(vec3 pos)
+{
+	int x = (pos.x / 2.0f);
+	int y = (pos.z / 2.0f);
+
+	return GetData(x, y);
+}
+
 
 class Player
 {
@@ -309,6 +338,10 @@ public:
 		{
 			player_intransit = 1.0f;
 			player->position = player_destination;
+
+			//finished transit, apply any checks
+
+			EnteredSquare(player->position);
 		}
 
 		player->position = glm::mix(player->position, player_destination, player_intransit);
@@ -321,6 +354,24 @@ public:
 		player->UpdateMatrixes();
 
 	}
+
+	void EnteredSquare(vec3 position)
+	{
+		MapDataItem &data = GetData(player->position);
+
+		if (data.has_loot)
+		{
+			Loot * l = data.has_loot;
+			entities.erase(std::find(entities.begin(), entities.end(), l));
+
+			delete l;
+
+			current_score ++;
+
+			data.has_loot = nullptr;
+		}
+	}
+
 
 };
 
@@ -410,16 +461,12 @@ public:
 Player *the_player = nullptr;
 vector<Enemy*> Enemies;
 
-int current_score = 0;
-int max_score = 0;
-
-bool level_won = true;
-bool level_lost = true;
-
 
 void ClearLevel()
 {
 	current_score = 0;
+	max_score = 0;
+
 	level_won = false;
 	level_lost = false;
 
@@ -439,11 +486,13 @@ void ClearLevel()
 	{
 		delete e;
 	}
+	Enemies.clear();
 
 	for (auto e : entities)
 	{
 		delete e;
 	}
+	entities.clear();
 
 	MapData.clear();
 	mapsizex = 0;
@@ -454,9 +503,11 @@ void ClearLevel()
 
 void ParseLevel(string filename)
 {
+	constexpr bool debug = false;
+
 	ClearLevel();
 
-	LOG("=== parsing level ===");
+	if (debug) LOG("=== parsing level ===");
 	stringstream ss;
 	string src = ReadFile(filename);
 	ss << src;
@@ -474,7 +525,7 @@ void ParseLevel(string filename)
 
 	auto level_line = ParseTokens(line);
 
-	LOGf("Level Name : %s", level_line.at(1).c_str());
+	if (debug) LOGf("Level Name : %s", level_line.at(1).c_str());
 
 	/// map legend
 	getline(ss, line);
@@ -489,7 +540,7 @@ void ParseLevel(string filename)
 
 		legend[sym[0]] = type;
 
-		LOGf("Legend : sym %s  ->  %s ", sym.c_str(), type.c_str());
+		if (debug) LOGf("Legend : sym %s  ->  %s ", sym.c_str(), type.c_str());
 
 		getline(ss, line);
 	}
@@ -504,7 +555,7 @@ void ParseLevel(string filename)
 		auto map_row_tok = ParseTokens(line);
 		string map_row = map_row_tok.at(0);
 
-		LOGf("Map line %d:  %s", row, map_row.c_str());
+		if (debug) LOGf("Map line %d:  %s", row, map_row.c_str());
 
 		vector<MapDataItem> mapdatarow;
 
@@ -547,8 +598,8 @@ void ParseLevel(string filename)
 	{
 		auto entity_line = ParseTokens(line);
 
-		LOGf("line '%s'", line.c_str());
-		LOGf("num tokens %d", entity_line.size());
+		if (debug) LOGf("line '%s'", line.c_str());
+		if (debug) LOGf("num tokens %d", entity_line.size());
 		if (entity_line.size() == 0) continue;
 
 		string etype = entity_line.at(0);
@@ -585,17 +636,18 @@ void ParseLevel(string filename)
 
 			Prim *pr = PrimMap[etype];
 
-			Object *obj = new Loot(vec3(x,0,row), vec3(0,0,0), pr);
+			Loot *obj = new Loot(vec3(x,0,row), vec3(0,0,0), pr);
 
 			entities.push_back(obj);
+
+			GetData(vec3(x,0,row)).has_loot = obj;
 		}
 
-		LOGf("Entity '%s' at '%s'", etype.c_str(), epos_src.c_str());
+		if (debug) LOGf("Entity '%s' at '%s'", etype.c_str(), epos_src.c_str());
 	}
 
 
-
-	LOG("=== end parse ---");
+	if (debug) LOG("=== end parse ---");
 
 }
 
