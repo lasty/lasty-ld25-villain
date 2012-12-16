@@ -53,6 +53,8 @@ public:
 	Quad *ui_0 = nullptr;
 	Quad *ui_slash = nullptr;
 
+	Quad *ui_smiley = nullptr;
+	Quad *ui_exclam = nullptr;
 
 	Image *image_cell = nullptr;
 	Image *image_marble = nullptr;

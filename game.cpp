@@ -270,6 +270,8 @@ public:
 
 	float playerspeed = 4.0f;
 
+	float emote_time = 0.0f;
+
 	Player()
 	{
 		//base default constructor - initialize everything in subclass Enemy below
@@ -287,13 +289,15 @@ public:
 		Occupy(player_destination);
 	}
 
-	~Player()
+	virtual ~Player()
 	{
 		delete player;
 	}
 
 	void Update(float dt)
 	{
+		emote_time -= dt;
+		if (emote_time < 0.0f) emote_time = 0.0f;
 
 		player_vel = glm::vec3();
 
@@ -355,7 +359,7 @@ public:
 
 	}
 
-	void EnteredSquare(vec3 position)
+	virtual void EnteredSquare(vec3 position)
 	{
 		MapDataItem &data = GetData(player->position);
 
@@ -368,6 +372,8 @@ public:
 
 			current_score ++;
 
+			emote_time = 2.0f;
+
 			data.has_loot = nullptr;
 		}
 	}
@@ -375,6 +381,7 @@ public:
 
 };
 
+Player *the_player = nullptr;
 
 class Enemy : public Player
 {
@@ -403,13 +410,21 @@ public:
 	}
 
 	int dir = 0;
+	bool on_alert = false;
+
 
 	bool waiting_cmd = false;
 	float thinking_delay;
 
 	void AI(float dt)
 	{
+		float delay1 = on_alert ? 0.2f : 0.4f;
+		float delay2 = on_alert ? 0.4f : 1.4f;
+		playerspeed = on_alert ? 4.0f : 1.0f;
+
 		//LOGf("AI - waiting_cmd = %s  transit = %.2f ", waiting_cmd ? "true":"false", player_intransit);
+
+		SearchForPlayer();
 
 		if (waiting_cmd) return;
 
@@ -426,10 +441,15 @@ public:
 
 		if (ClipPlayer(newpos))
 		{
+			if (IsPlayerAt(newpos))  //if a guard is touching a player
+			{
+				level_lost = true;
+			}
+
 			dir = (dir+1) % 4;
 			LOGf("AI command:  rotate to direction %d", dir);
 			player_destination_rotation -= 90.0f;
-			thinking_delay = 1.4f;
+			thinking_delay = delay2;
 			return;
 		}
 
@@ -437,11 +457,54 @@ public:
 		player_origin = player->position;
 		player_destination = newpos;
 		player_intransit = 0.0f;
-		thinking_delay = 0.4f;
+		thinking_delay = delay1;
 		waiting_cmd = true;
 
 		Unoccupy(player_origin);
 		Occupy(player_destination);
+
+	}
+
+	bool IsPlayerAt(vec3 newpos)
+	{
+		int playerx = the_player->player->position.x/2.0f;
+		int playery = the_player->player->position.z/2.0f;
+
+		int thisx = newpos.x / 2.0f;
+		int thisy = newpos.z / 2.0f;
+
+		return (thisx == playerx and thisy == playery);
+	}
+
+	void SearchForPlayer()
+	{
+		vec3 newpos = player->position;
+
+		int max_checks = 10;
+
+		for (int i=0; i< max_checks; ++i)
+		{
+
+			if (dir == 0) { newpos.z -= 2.0f; }
+			else if (dir == 1) { newpos.x += 2.0f; }
+			else if (dir == 2) { newpos.z += 2.0f; }
+			else if (dir == 3) { newpos.x -= 2.0f; }
+
+			//MapDataItem &d = GetData(newpos);
+
+
+			if (IsPlayerAt(newpos))
+			{
+				emote_time = 2.0f;
+
+				thinking_delay = 0.0f;
+
+				return;
+			}
+
+			if (ClipPlayer(newpos)) return;
+
+		}
 
 	}
 
@@ -451,14 +514,19 @@ public:
 
 		Player::Update(dt);
 
+		on_alert = emote_time > 0.0f;
+
 		waiting_cmd = player_intransit < 1.0f;
 	}
 
+	void EnteredSquare(vec3 position)
+	{
+		//do nothing, stops AI from picking up loot
+	}
 
 };
 
 
-Player *the_player = nullptr;
 vector<Enemy*> Enemies;
 
 
@@ -618,8 +686,12 @@ void ParseLevel(string filename)
 			lights.push_back( new Light(vec3(x, 1.0f, y), colour));
 		}
 
-		else if (etype == "playerstart" and the_player == nullptr)
+		else if (etype == "playerstart")
 		{
+			if (the_player != nullptr)
+			{
+				delete the_player;
+			}
 			the_player = new Player(x, y);
 		}
 
@@ -698,6 +770,10 @@ void Game::InitGL()
 	ui_0 = new Quad(*vbuff1, 8, 5, 9, 6, 10);
 	ui_slash =
 	       new Quad(*vbuff1, 8, 6, 9, 7, 10);
+
+	ui_smiley = new Quad(*vbuff1, 8, 6, 13, 8, 14);
+
+	ui_exclam = new Quad(*vbuff1, 8, 6, 3, 8, 4);
 
 	cam1 = new Camera();
 
@@ -810,6 +886,8 @@ void Game::DestroyGL()
 	delete ui_0;
 	delete ui_slash;
 
+	delete ui_exclam;
+	delete ui_smiley;
 
 	delete image_cell;
 	delete image_marble;
@@ -941,10 +1019,11 @@ void Game::Key(SDL_Keycode key, bool keydown)
 		running = false;
 	}
 
-	if (keydown and key == SDLK_F5)
+	if (keydown and ((key == SDLK_F5) or ((level_won or level_lost) and (key == SDLK_SPACE))))
 	{
 		level_loaded = false;  //reloads the level
 	}
+
 
 	if (keydown and key == SDLK_l)
 	{
@@ -1089,6 +1168,7 @@ void Game::Render()
 	prog2->SetTexture(image_cell);
 	the_player->player->Render(cam1, prog2);
 
+
 	for (auto e: entities)
 	{
 		SetLights(prog2, e->position);
@@ -1136,8 +1216,45 @@ void Game::RenderText(float offx, float offy, const string &txt)
 
 void Game::RenderGUI()
 {
-	prog1->Use(vbuff1);
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
 
+	//glBlendFunc(GL_ONE, GL_ONE);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	prog1->Use(vbuff1);
+	prog1->SetTexture(image_texts);
+
+	//check for speech bubbles
+
+	prog1->SetCamera(cam1);
+
+	if (the_player->emote_time > 0.0f )
+	{
+		vec3 pos = the_player->player->position;
+		mat4 model_matrix = glm::translate(mat4(), vec3(pos.x + 0.5f, pos.y + 1.0f, pos.z));
+		model_matrix = glm::scale(model_matrix, vec3(0.02f));
+
+		prog1->SetModel(model_matrix);
+		ui_smiley->Draw();
+		//LOG(":D");
+	}
+
+	for (auto e : Enemies)
+	{
+		if (e->emote_time > 0.0f )
+		{
+			vec3 pos = e->player->position;
+			mat4 model_matrix = glm::translate(mat4(), vec3(pos.x + 0.5f, pos.y + 1.0f, pos.z));
+			model_matrix = glm::scale(model_matrix, vec3(0.02f));
+
+			prog1->SetModel(model_matrix);
+			ui_exclam->Draw();
+		}
+	}
+
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	prog1->SetCamera(ortho1);
 
@@ -1149,13 +1266,10 @@ void Game::RenderGUI()
 
 	prog1->SetModel(model_matrix);
 
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
-	prog1->SetTexture(image_texts);
+
+
 
 
 	ui_loot->Draw();
