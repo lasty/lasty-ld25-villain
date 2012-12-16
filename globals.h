@@ -55,4 +55,6 @@ extern int HEIGHT;
 extern bool running;
 
 
+void PlaySound(std::string which, float volume = 1.0f);
+
 #endif /* GLOBALS_H_ */

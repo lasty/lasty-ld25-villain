@@ -10,11 +10,11 @@ set(SOURCES main.cpp os_utils.cpp vertex.cpp program.cpp camera.cpp prim.cpp ima
 
 ##SDL2
 
-set(SDL_ATOMIC OFF CACHE BOOL "")
+set(SDL_ATOMIC ON CACHE BOOL "")
 set(SDL_RENDER OFF CACHE BOOL "")
 set(SDL_POWER OFF CACHE BOOL "")
-set(SDL_THREADS OFF CACHE BOOL "")
-set(SDL_FILE OFF CACHE BOOL "")
+set(SDL_THREADS ON CACHE BOOL "")
+set(SDL_FILE ON CACHE BOOL "")
 set(SDL_CPUINFO OFF CACHE BOOL "")
 set(SDL_HAPTIC OFF CACHE BOOL "")
 set(SDL_JOYSTICK OFF CACHE BOOL "")

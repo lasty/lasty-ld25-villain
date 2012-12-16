@@ -7,6 +7,9 @@
  *      Author: Lasty
  */
 
+// This file seems to have everything dumped in it
+// Didnt have time to separate it properly :/
+
 #include "game.h"
 
 #include "os_utils.h"
@@ -372,6 +375,8 @@ public:
 
 			current_score ++;
 
+			PlaySound("loot");
+
 			emote_time = 2.0f;
 
 			data.has_loot = nullptr;
@@ -446,6 +451,7 @@ public:
 			if (IsPlayerAt(newpos))  //if a guard is touching a player
 			{
 				level_lost = true;
+				PlaySound("lose");
 			}
 
 			dir = (dir+1) % 4;
@@ -977,7 +983,12 @@ void Game::Update(float dt)
 	cam1->Update(dt);
 
 
-	if (current_score >= max_score) level_won = true;
+	if (current_score >= max_score)
+	{
+		if (not level_won) PlaySound("win");
+
+		level_won = true;
+	}
 
 }
 
