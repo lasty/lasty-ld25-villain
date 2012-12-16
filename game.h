@@ -56,6 +56,9 @@ public:
 	Quad *ui_smiley = nullptr;
 	Quad *ui_exclam = nullptr;
 
+	Quad *ui_title = nullptr;
+
+
 	Image *image_cell = nullptr;
 	Image *image_marble = nullptr;
 	Image *image_brick = nullptr;
@@ -63,12 +66,15 @@ public:
 	Image *image_cash = nullptr;
 
 	Image *image_texts = nullptr;
+	Image *image_title = nullptr;
 
 	ObjPrim *cube1 = nullptr;
 
 	ObjPrim *player1 = nullptr;
+	Image *image_playerskin = nullptr;
 
 	ObjPrim *enemy1 = nullptr;
+	Image *image_enemyskin = nullptr;
 
 	ObjPrim *floor1 = nullptr;
 

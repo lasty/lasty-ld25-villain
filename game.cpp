@@ -783,6 +783,8 @@ void Game::InitGL()
 
 	ui_exclam = new Quad(*vbuff1, 8, 6, 3, 8, 4);
 
+	ui_title = new Quad(*vbuff1, 8, 0, -1, 8, 6);
+
 	cam1 = new Camera();
 
 	ortho1 = new Camera();
@@ -811,16 +813,27 @@ void Game::InitGL()
 	image_texts->LoadImage("../Data/texts.webp");
 	image_texts->SetSmooth();
 
+	image_title = new Image();
+	image_title->LoadImage("../Data/title.webp");
+	image_title->SetSmooth();
+
+	image_playerskin = new Image();
+	image_playerskin->LoadImage("../Data/playerskin.webp");
+	image_playerskin->SetSmooth();
+
+	image_enemyskin = new Image();
+	image_enemyskin->LoadImage("../Data/enemyskin.webp");
+	image_enemyskin->SetSmooth();
+
 
 	cube1 = new ObjPrim(*vbuff1, "../Data/cube.obj", image_cell, 0.5f);
 	PrimMap["cube1"] = cube1;
 
-	player1 = new ObjPrim(*vbuff1, "../Data/arrow.obj", image_cell, 0.75f);
+	player1 = new ObjPrim(*vbuff1, "../Data/player.obj", image_playerskin, 0.75f);
 	PrimMap["player"] = player1;
 
-	enemy1 = new ObjPrim(*vbuff1, "../Data/enemy.obj", image_cell, 0.75f);
+	enemy1 = new ObjPrim(*vbuff1, "../Data/enemy.obj", image_enemyskin, 0.75f);
 	PrimMap["enemy"] = enemy1;
-	//PrimMap["player"] = enemy1;
 
 	light1 = new ObjPrim(*vbuff1, "../Data/cube.obj", image_cell, 0.1f);
 	PrimMap["light1"] = light1;
@@ -905,7 +918,10 @@ void Game::DestroyGL()
 	delete image_texts;
 
 	delete cube1;
+
 	delete player1;
+	delete image_playerskin;
+
 	delete enemy1;
 	delete floor1;
 	delete wall1;
@@ -937,6 +953,7 @@ bool control_cam_down = false;
 bool show_lights = false;  ///< debug light positions with small cubes
 bool level_loaded = false;
 bool sort_objects = true;  ///< depth sort front to back, to minimize frag shader runs
+bool show_title = true;
 
 void Game::Update(float dt)
 {
@@ -996,6 +1013,7 @@ void Game::Update(float dt)
 
 void Game::Key(SDL_Keycode key, bool keydown)
 {
+	show_title = false;
 
 	if (key == SDLK_w or key == SDLK_UP)
 	{
@@ -1245,7 +1263,7 @@ void Game::RenderGUI()
 	if (the_player->emote_time > 0.0f )
 	{
 		vec3 pos = the_player->player->position;
-		mat4 model_matrix = glm::translate(mat4(), vec3(pos.x + 0.5f, pos.y + 1.0f, pos.z));
+		mat4 model_matrix = glm::translate(mat4(), vec3(pos.x + 0.5f, pos.y + 3.0f, pos.z));
 		model_matrix = glm::scale(model_matrix, vec3(0.02f));
 
 		prog1->SetModel(model_matrix);
@@ -1258,7 +1276,7 @@ void Game::RenderGUI()
 		if (e->emote_time > 0.0f )
 		{
 			vec3 pos = e->player->position;
-			mat4 model_matrix = glm::translate(mat4(), vec3(pos.x + 0.5f, pos.y + 1.0f, pos.z));
+			mat4 model_matrix = glm::translate(mat4(), vec3(pos.x + 0.5f, pos.y + 3.0f, pos.z));
 			model_matrix = glm::scale(model_matrix, vec3(0.02f));
 
 			prog1->SetModel(model_matrix);
@@ -1278,10 +1296,6 @@ void Game::RenderGUI()
 	mat4 model_matrix = translate_matrix ;
 
 	prog1->SetModel(model_matrix);
-
-
-
-
 
 
 
@@ -1311,6 +1325,18 @@ void Game::RenderGUI()
 		prog1->SetModel(model_matrix);
 
 		ui_caught->Draw();
+
+	}
+
+	if (show_title)
+	{
+		mat4 translate_matrix = glm::translate(mat4(), vec3(WIDTH/2.0f, HEIGHT/2.0f, 0.0f));
+		mat4 scale_matrix = glm::scale(translate_matrix, vec3(2.0f));
+		prog1->SetModel(scale_matrix);
+
+		prog1->SetTexture(image_title);
+
+		ui_title->Draw();
 
 	}
 
