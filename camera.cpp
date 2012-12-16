@@ -13,7 +13,7 @@
 
 Camera::Camera()
 {
-	position = vec3(10.0f, 2.0f, 10.0f);
+	position = position_set = vec3(10.0f, 2.0f, 10.0f);
 	look_at = vec3(0.0f, 0.0f, 0.0f);
 	up = vec3(0.0f, 1.0f, 0.0f);
 

@@ -42,6 +42,10 @@ public:
 
 	ObjPrim *cube1 = nullptr;
 
+	ObjPrim *player1 = nullptr;
+
+	ObjPrim *enemy1 = nullptr;
+
 	ObjPrim *floor1 = nullptr;
 
 	ObjPrim *wall1 = nullptr;

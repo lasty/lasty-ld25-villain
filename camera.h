@@ -21,6 +21,7 @@ class Camera
 public:
 	vec3 look_at;
 	vec3 position;
+	vec3 position_set;
 	vec3 up;
 
 	float fov = 45.0f;

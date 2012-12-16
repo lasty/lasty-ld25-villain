@@ -93,9 +93,6 @@ vector<Object *> objs;
 
 vector<Light *> lights;
 
-Object* player = nullptr;
-glm::vec3 player_vel;
-
 
 vector<string> ParseTokens(string src)
 {
@@ -164,6 +161,109 @@ bool ClipPlayer(glm::vec3 pos)
 
 	return d.clip_player;
 }
+
+
+class Player
+{
+public:
+	Object* player = nullptr;
+	glm::vec3 player_vel;
+
+	float player_intransit = 1.0f;
+	vec3 player_destination;
+	vec3 player_origin;
+	float player_destination_rotation;
+
+	bool control_fwd = false;
+	bool control_back = false;
+	bool control_left = false;
+	bool control_right = false;
+
+	Player(float x, float y)
+	{
+		Prim *pr = PrimMap["player"];
+		player = new Object(vec3(x, 0.0f, y), vec3(0,0,0), pr);
+
+		//player->position = vec3(x, 0, y);
+
+		player_destination = player->position;
+		player_destination_rotation = 0.0f;
+	}
+
+	~Player()
+	{
+		delete player;
+	}
+
+	void Update(float dt)
+	{
+		float playerspeed = 4.0f;
+
+		player_vel = glm::vec3();
+
+		if (control_fwd) player_vel.z -= 1.0f;
+		if (control_back) player_vel.z += 1.0f;
+
+		if (control_left) player_vel.x -= 1.0f;
+		if (control_right) player_vel.x += 1.0f;
+
+		if (player_intransit >= 1.0f and player_vel != vec3())
+		{
+			float new_rot;
+			if (player_vel.z == 0.0f)
+			{
+				if (player_vel.x == -1.0f) new_rot = 90;
+				else new_rot = 270;
+			}
+			else if (player_vel.z == 1.0f) new_rot = 180;
+			else new_rot = 0.0f;
+
+			player_destination_rotation = new_rot;
+
+			if (not ClipPlayer(player->position + player_vel * 2.0f))
+			{
+				player_origin = player->position;
+				player_destination = player->position + player_vel * 2.0f;
+				player_intransit = 0.0f;
+			}
+
+		}
+
+		if (player_intransit < 1.0f)
+		{
+			player_intransit += dt * playerspeed;
+			player->position = glm::mix(player_origin, player_destination, player_intransit);
+		}
+
+		if (player_intransit > 1.0f)
+		{
+			player_intransit = 1.0f;
+			player->position = player_destination;
+		}
+
+		player->position = glm::mix(player->position, player_destination, player_intransit);
+
+		if (player->rotation.y - player_destination_rotation > 180.0f) player->rotation.y -= 360.0f;
+		if (player->rotation.y - player_destination_rotation < -180.0f) player->rotation.y += 360.0f;
+
+		player->rotation.y = glm::mix(player->rotation.y, player_destination_rotation, dt * 4.0f);
+
+		player->UpdateMatrixes();
+
+	}
+
+};
+
+
+class Enemy
+{
+public:
+
+
+};
+
+
+Player *the_player = nullptr;
 
 
 void ClearLevel()
@@ -302,11 +402,9 @@ void ParseLevel(string filename)
 			lights.push_back( new Light(vec3(x, 1.0f, y), colour));
 		}
 
-		else if (etype == "playerstart" and player == nullptr)
+		else if (etype == "playerstart" and the_player == nullptr)
 		{
-			Prim *pr = PrimMap["player"];
-
-			player = new Object(vec3(x,1.0f,y), vec3(0,0,0), pr);
+			the_player = new Player(x, y);
 		}
 
 		LOGf("Entity '%s' at '%s'", etype.c_str(), epos_src.c_str());
@@ -331,6 +429,7 @@ Game::~Game()
 
 }
 
+vec3 cam_offset(0, 2, 4);
 
 
 void Game::InitGL()
@@ -363,7 +462,13 @@ void Game::InitGL()
 
 	cube1 = new ObjPrim(*vbuff1, "../Data/cube.obj", image_cell, 0.5f);
 	PrimMap["cube1"] = cube1;
-	PrimMap["player"] = cube1;
+
+	player1 = new ObjPrim(*vbuff1, "../Data/arrow.obj", image_cell, 0.75f);
+	PrimMap["player"] = player1;
+
+	enemy1 = new ObjPrim(*vbuff1, "../Data/enemy.obj", image_cell, 0.75f);
+	PrimMap["enemy"] = enemy1;
+	//PrimMap["player"] = enemy1;
 
 	light1 = new ObjPrim(*vbuff1, "../Data/cube.obj", image_cell, 0.1f);
 	PrimMap["light1"] = light1;
@@ -374,7 +479,13 @@ void Game::InitGL()
 	wall1 = new ObjPrim(*vbuff1, "../Data/wall.obj", image_brick);
 	PrimMap["wall1"] = wall1;
 
-	cam1->position += vec3(0, 2, 0);
+	cam1->position += cam_offset;
+	cam1->position_set += cam_offset;
+
+	//initial height
+	cam1->position.y += 5.0f;
+	cam1->position_set.y += 5.0f;
+
 	cam1->CalcMatrixes();
 
 //	for (int x=-5; x<15; ++x)
@@ -402,7 +513,7 @@ void Game::DestroyGL()
 {
 	ClearLevel();
 
-	delete player;
+	delete the_player;
 
 	delete prog1;
 	delete prog2;
@@ -414,6 +525,8 @@ void Game::DestroyGL()
 	delete image_brick;
 
 	delete cube1;
+	delete player1;
+	delete enemy1;
 	delete floor1;
 	delete wall1;
 
@@ -428,19 +541,10 @@ void Game::Resize(int w, int h)
 	cam1->Resize(w, h);
 }
 
-float player_intransit = 1.0f;
-vec3 player_destination;
-vec3 player_origin;
-
-bool control_fwd = false;
-bool control_back = false;
-bool control_left = false;
-bool control_right = false;
-
 bool control_cam_up = false;
 bool control_cam_down = false;
 
-bool show_lights = true;
+bool show_lights = false;
 bool level_loaded = false;
 bool sort_objects = false;
 
@@ -450,56 +554,31 @@ void Game::Update(float dt)
 	{
 		ParseLevel("../Data/level1.txt");
 		level_loaded=true;
-		player_destination = player->position;
+
+		ASSERT(the_player);
+
 	}
 
-	ASSERT(player);
 
-	float playerspeed = 4.0f;
+	the_player->Update(dt);
+
 	float camspeed = 8.0f;
 
-	player_vel = glm::vec3();
-
-	if (control_fwd) player_vel.z -= 1.0f;
-	if (control_back) player_vel.z += 1.0f;
-
-	if (control_left) player_vel.x -= 1.0f;
-	if (control_right) player_vel.x += 1.0f;
-
-	if (player_intransit >= 1.0f and player_vel != vec3())
-	{
-		if (not ClipPlayer(player->position + player_vel * 2.0f))
-		{
-			player_origin = player->position;
-			player_destination = player->position + player_vel * 2.0f;
-			player_intransit = 0.0f;
-		}
-	}
-
-	if (player_intransit < 1.0f)
-	{
-		player_intransit += dt * playerspeed;
-		player->position = glm::mix(player_origin, player_destination, player_intransit);
-	}
-
-	if (player_intransit > 1.0f)
-	{
-		player_intransit = 1.0f;
-		player->position = player_destination;
-	}
-
-	player->position = glm::mix(player->position, player_destination, player_intransit);
-	player->UpdateMatrixes();
-
-	//LOGf("player_intransit = %.2f", player_intransit);
-	cam1->look_at = player->position;
+	cam1->look_at = the_player->player->position;
+	cam1->position_set = the_player->player->position + cam_offset;
 
 	vec3 cam_vel = glm::vec3();
 
 	if (control_cam_up) cam_vel.y += 1.0f;
 	if (control_cam_down) cam_vel.y -= 1.0f;
 
-	cam1->position = cam1->position + ( cam_vel * camspeed * dt);
+	cam1->position.y = cam1->position.y + ( cam_vel.y * camspeed * dt);
+
+	float camfollowspeed = 1.25f;
+
+	cam1->position.x = glm::mix(cam1->position.x, cam1->position_set.x, dt * camfollowspeed);
+	cam1->position.z = glm::mix(cam1->position.z, cam1->position_set.z, dt * camfollowspeed);
+
 
 	cam1->Update(dt);
 
@@ -510,32 +589,32 @@ void Game::Update(float dt)
 void Game::Key(SDL_Keycode key, bool keydown)
 {
 
-	if (key == SDLK_w)
+	if (key == SDLK_w or key == SDLK_UP)
 	{
-		control_fwd = keydown;
+		the_player->control_fwd = keydown;
 	}
 
-	if (key == SDLK_s)
+	if (key == SDLK_s or key == SDLK_DOWN)
 	{
-		control_back = keydown;
+		the_player->control_back = keydown;
 	}
 
-	if (key == SDLK_a)
+	if (key == SDLK_a or key == SDLK_LEFT)
 	{
-		control_left = keydown;
+		the_player->control_left = keydown;
 	}
 
-	if (key == SDLK_d)
+	if (key == SDLK_d or key == SDLK_RIGHT)
 	{
-		control_right = keydown;
+		the_player->control_right = keydown;
 	}
 
-	if (key == SDLK_UP)
+	if (key == SDLK_PLUS or key == SDLK_EQUALS or key == SDLK_KP_PLUS)
 	{
 		control_cam_up = keydown;
 	}
 
-	if (key == SDLK_DOWN)
+	if (key == SDLK_MINUS or key == SDLK_KP_MINUS)
 	{
 		control_cam_down = keydown;
 	}
@@ -688,10 +767,10 @@ void Game::Render()
 	prog2->Use(vbuff1);
 	prog2->SetCamera(cam1);
 
-	SetLights(prog2, player->position);
+	SetLights(prog2, the_player->player->position);
 
 	prog2->SetTexture(image_cell);
-	player->Render(cam1, prog2);
+	the_player->player->Render(cam1, prog2);
 
 
 }
