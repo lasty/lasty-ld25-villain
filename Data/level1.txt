@@ -17,4 +17,8 @@ light 6,1 torch
 light 1,4 yellow
 light 6,4 red
 
+enemy 1,1 N
+enemy 6,4 S
+
+
 playerstart 4,3

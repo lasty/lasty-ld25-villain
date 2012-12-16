@@ -179,6 +179,13 @@ public:
 	bool control_left = false;
 	bool control_right = false;
 
+	float playerspeed = 4.0f;
+
+	Player()
+	{
+		//base default constructor - initialize everything in subclass Enemy below
+	}
+
 	Player(float x, float y)
 	{
 		Prim *pr = PrimMap["player"];
@@ -197,7 +204,6 @@ public:
 
 	void Update(float dt)
 	{
-		float playerspeed = 4.0f;
 
 		player_vel = glm::vec3();
 
@@ -255,15 +261,85 @@ public:
 };
 
 
-class Enemy
+class Enemy : public Player
 {
 public:
+
+	Enemy(float x, float y, string initial_dir)
+	: Player()
+	{
+		Prim *pr = PrimMap["enemy"];
+		player = new Object(vec3(x, 0.0f, y), vec3(0, 0, 0), pr);
+
+		player_destination = player->position;
+		player_destination_rotation = 0.0f;
+
+		playerspeed = 1.0f;
+
+		if (initial_dir == "N") dir = 0;
+		if (initial_dir == "E") dir = 1;
+		if (initial_dir == "S") dir = 2;
+		if (initial_dir == "W") dir = 0;
+
+		thinking_delay = 1.0f;
+		player_intransit = 1.0f;
+
+	}
+
+	int dir = 0;
+
+	bool waiting_cmd = false;
+	float thinking_delay;
+
+	void AI(float dt)
+	{
+		//LOGf("AI - waiting_cmd = %s  transit = %.2f ", waiting_cmd ? "true":"false", player_intransit);
+
+		if (waiting_cmd) return;
+
+		thinking_delay -= dt;
+
+		if (thinking_delay > 0.0f) return;
+
+		vec3 newpos = player->position;
+
+		if (dir == 0) { newpos.z -= 2.0f;  player_destination_rotation = 0.0f; }
+		else if (dir == 1) { newpos.x += 2.0f;  player_destination_rotation = 270.0f; }
+		else if (dir == 2) { newpos.z += 2.0f;  player_destination_rotation = 180.0f; }
+		else if (dir == 3) { newpos.x -= 2.0f;  player_destination_rotation = 90.0f; }
+
+		if (ClipPlayer(newpos))
+		{
+			dir = (dir+1) % 4;
+			LOGf("AI command:  rotate to direction %d", dir);
+			player_destination_rotation -= 90.0f;
+			thinking_delay = 1.4f;
+			return;
+		}
+
+		LOGf("AI command:  move in direction %d", dir);
+		player_origin = player->position;
+		player_destination = newpos;
+		player_intransit = 0.0f;
+		thinking_delay = 0.4f;
+		waiting_cmd = true;
+	}
+
+	void Update(float dt)
+	{
+		AI(dt);
+
+		Player::Update(dt);
+
+		waiting_cmd = player_intransit < 1.0f;
+	}
 
 
 };
 
 
 Player *the_player = nullptr;
+vector<Enemy*> Enemies;
 
 
 void ClearLevel()
@@ -407,6 +483,13 @@ void ParseLevel(string filename)
 			the_player = new Player(x, y);
 		}
 
+		else if (etype == "enemy")
+		{
+			string dir = entity_line.size() > 2 ? entity_line.at(2) : "N";
+
+			Enemies.push_back( new Enemy(x,y, dir) );
+		}
+
 		LOGf("Entity '%s' at '%s'", etype.c_str(), epos_src.c_str());
 	}
 
@@ -515,6 +598,11 @@ void Game::DestroyGL()
 
 	delete the_player;
 
+	for (auto e: Enemies)
+	{
+		delete e;
+	}
+
 	delete prog1;
 	delete prog2;
 	delete q1;
@@ -561,6 +649,12 @@ void Game::Update(float dt)
 
 
 	the_player->Update(dt);
+
+	for (auto e : Enemies)
+	{
+		e->Update(dt);
+	}
+
 
 	float camspeed = 8.0f;
 
@@ -772,6 +866,14 @@ void Game::Render()
 	prog2->SetTexture(image_cell);
 	the_player->player->Render(cam1, prog2);
 
+
+	//prog2->SetTexture(image_cell);
+	for (auto e: Enemies)
+	{
+		SetLights(prog2, e->player->position);
+
+		e->player->Render(cam1, prog2);
+	}
 
 }
 
