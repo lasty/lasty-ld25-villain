@@ -576,6 +576,20 @@ void ClearLevel()
 }
 
 
+void AddLoot(string etype, int x, int y, MapDataItem &d)
+{
+
+	max_score++;
+
+	Prim *pr = PrimMap[etype];
+
+	Loot *obj = new Loot(vec3(x*2,0,y*2), vec3(0,0,0), pr);
+
+	entities.push_back(obj);
+
+	d.has_loot = obj;
+}
+
 
 void ParseLevel(string filename)
 {
@@ -637,8 +651,35 @@ void ParseLevel(string filename)
 
 		for (int x=0; x<int(map_row.size()); ++x)
 		{
+			mapdatarow.push_back(MapDataItem());
+			MapDataItem &d = mapdatarow.back();
+
 			string s = legend[map_row[x]];
 			Object *obj = nullptr;
+
+			float fx = x * 2.0f;
+			float fy = row * 2.0f;
+
+			if (s == "goldbars" or s == "cash")
+			{
+				AddLoot(s, x, row, d);
+
+				// add floor underneath
+				s = "floor1";
+			}
+
+			if (s == "light1" or s == "light2" or s == "light3")
+			{
+				vec3 colour(0.8f, 0.8f, 0.8f);
+
+				if (s == "light1") colour = LightColours["torch"];
+				if (s == "light2") colour = LightColours["cyan"];
+				if (s == "light3") colour = LightColours["red"];
+
+				lights.push_back( new Light(vec3(fx, 1.0f, fy), colour));
+
+				s = "floor1";
+			}
 
 			Prim *pr = PrimMap[s];
 
@@ -653,10 +694,8 @@ void ParseLevel(string filename)
 				//THROW(string("Unknown legend type ") + s);
 			}
 
-			MapDataItem d;
 			d.clip_player = s=="wall1";
 
-			mapdatarow.push_back(d);
 		}
 
 		MapData.push_back(mapdatarow);
@@ -684,6 +723,8 @@ void ParseLevel(string filename)
 
 		float x = epos.at(0) * 2;
 		float y = epos.at(1) * 2;
+		int ix = epos.at(0);
+		int iy = epos.at(1);
 
 
 		if (etype == "light")
@@ -712,15 +753,7 @@ void ParseLevel(string filename)
 
 		else if (etype == "goldbars" or etype == "cash")
 		{
-			max_score++;
-
-			Prim *pr = PrimMap[etype];
-
-			Loot *obj = new Loot(vec3(x,0,row), vec3(0,0,0), pr);
-
-			entities.push_back(obj);
-
-			GetData(vec3(x,0,row)).has_loot = obj;
+			AddLoot(etype, ix, iy, GetData(ix, iy));
 		}
 
 		if (debug) LOGf("Entity '%s' at '%s'", etype.c_str(), epos_src.c_str());
@@ -991,7 +1024,7 @@ void Game::Update(float dt)
 
 	cam1->position.y = cam1->position.y + ( cam_vel.y * camspeed * dt);
 
-	float camfollowspeed = 1.25f;
+	float camfollowspeed = 2.25f;
 
 	cam1->position.x = glm::mix(cam1->position.x, cam1->position_set.x, dt * camfollowspeed);
 	cam1->position.z = glm::mix(cam1->position.z, cam1->position_set.z, dt * camfollowspeed);

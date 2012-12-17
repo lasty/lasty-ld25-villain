@@ -2,14 +2,23 @@ level level1
 
 legend . floor1
 legend + wall1
+legend $ cash
+legend * goldbars
+legend 1 light1
+legend 2 light2
+legend 3 light3
 
 beginmap
-++++++++
-+......+
-+......+
-+......+
-+......+
-++++..++
+++++++++++++++++++++++++++++++++
++......+*....3..+...3.+....1..$+
++..*$..+.$.......$$..........$.+
++..$*.....2.....+.$$..+..2.....+
++......++...*..++..$$..........+
+++++..++....*2......+++++......+
+xxx+$.++1..........1+$*$+..$...+
+xxx+.2..............+*$*2......+
+xxx+.+++1*...2....**+$*$+.....1+
+xxx+.+++++++++++++++++++++++++++
 endmap
 
 light 1,1 cyan
@@ -19,10 +28,12 @@ light 6,4 red
 
 enemy 1,1 N
 enemy 6,4 S
+enemy 8,1 N
+enemy 8,8 N
+enemy 17,1 N
+enemy 26,5 N
+enemy 26,6 S
+enemy 21,6 N
 
-cash 4,3
-goldbars 2,1
-goldbars 6,4
 
-
-playerstart 5,3
+playerstart 4,9
