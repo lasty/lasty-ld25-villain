@@ -47,6 +47,7 @@ class Program;
 
 class VertexArray : public vector<vertex>
 {
+	GLuint vbo_id;
 public:
 	VertexArray();
 	virtual ~VertexArray();
@@ -57,6 +58,7 @@ public:
 
 	void SetupArrays();
 
+	void Bind();
 };
 
 
