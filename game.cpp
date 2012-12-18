@@ -922,8 +922,9 @@ void Game::DestroyGL()
 
 	delete prog1;
 	delete prog2;
-	delete q1;
 	delete vbuff1;
+
+	delete q1;
 
 	delete ui_loot;
 	delete ui_win;
@@ -940,8 +941,9 @@ void Game::DestroyGL()
 	delete ui_0;
 	delete ui_slash;
 
-	delete ui_exclam;
 	delete ui_smiley;
+	delete ui_exclam;
+	delete ui_title;
 
 	delete image_cell;
 	delete image_marble;
@@ -949,13 +951,18 @@ void Game::DestroyGL()
 	delete image_gold;
 	delete image_cash;
 	delete image_texts;
+	delete image_title;
+
+	delete image_playerskin;
+	delete image_enemyskin;
 
 	delete cube1;
 
 	delete player1;
-	delete image_playerskin;
 
 	delete enemy1;
+
+	delete light1;
 	delete floor1;
 	delete wall1;
 

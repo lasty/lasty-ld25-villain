@@ -85,6 +85,8 @@ Program::~Program()
 	glDetachShader(prog_id, vs_id);
 	glDetachShader(prog_id, fs_id);
 	glDeleteProgram(prog_id);
+	glDeleteShader(vs_id);
+	glDeleteShader(fs_id);
 }
 
 string Program::GetLog(int shader_id)
