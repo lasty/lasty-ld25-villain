@@ -786,6 +786,9 @@ void Game::InitGL()
 
 	glEnable(GL_DEPTH_TEST);
 
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+
 	vbuff1 = new VertexArray();
 
 	prog1 = new Program("../Data/prog1.glsl");
@@ -1296,7 +1299,7 @@ void Game::RenderGUI()
 	glEnable(GL_BLEND);
 
 	//glBlendFunc(GL_ONE, GL_ONE);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	prog1->Use(vbuff1);
 	prog1->SetTexture(image_texts);
@@ -1330,7 +1333,7 @@ void Game::RenderGUI()
 	}
 
 
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	prog1->SetCamera(ortho1);
 

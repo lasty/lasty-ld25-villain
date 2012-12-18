@@ -142,7 +142,14 @@ void Program::Use()
 
 void Program::Use(VertexArray *vbuff)
 {
-	Use();
+	static int last_prog_used = -1;
+
+	if (last_prog_used != prog_id)
+	{
+		Use();
+		last_prog_used = prog_id;
+	}
+
 
 	vbuff->SetPointers(this);
 }
@@ -184,9 +191,16 @@ void Program::SetModel(const mat4 &model_matrix)
 
 void Program::SetTexture(Image* img)
 {
-	glActiveTexture(GL_TEXTURE0);
-	img->Bind();
-	if (u_tex != -1) SetUniform(u_tex, 0);
+	//glActiveTexture(GL_TEXTURE0);  //not using multitexture, so remove redundant call
+
+	static Image *last_texture = nullptr;  //cache last result, should be faster
+
+	if (img != last_texture)
+	{
+		img->Bind();
+		last_texture = img;
+		if (u_tex != -1) SetUniform(u_tex, 0);
+	}
 }
 
 ProgramLighting::ProgramLighting(const string filename)
